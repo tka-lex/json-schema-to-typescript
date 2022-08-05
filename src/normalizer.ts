@@ -41,7 +41,7 @@ rules.set('Destructure unary types', schema => {
 
 rules.set('Add empty `required` property if none is defined', schema => {
   if (isObjectType(schema) && !('required' in schema)) {
-    schema.required = []
+    schema.required = false
   }
 })
 

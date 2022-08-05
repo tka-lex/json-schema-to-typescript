@@ -126,6 +126,10 @@ export function compileFromFile(filename: string, options: Partial<Options> = DE
 export async function compile(schema: JSONSchema4, name: string, options: Partial<Options> = {}): Promise<string> {
   validateOptions(options)
 
+  if (schema.title === undefined) {
+    schema.title = name
+  }
+
   const _options = merge({}, DEFAULT_OPTIONS, options)
 
   const start = Date.now()

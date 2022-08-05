@@ -86,7 +86,7 @@ export interface NormalizedJSONSchema extends LinkedJSONSchema {
   anyOf?: NormalizedJSONSchema[]
   oneOf?: NormalizedJSONSchema[]
   not?: NormalizedJSONSchema
-  required: string[]
+  required: string[] | boolean
 
   // Removed by normalizer
   id: never

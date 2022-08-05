@@ -12,7 +12,7 @@ import {
   TIntersection,
   TNamedInterface,
   TUnion,
-  T_UNKNOWN
+  T_UNKNOWN, TInterfaceParam
 } from './types/AST'
 import {log, toSafeString} from './utils'
 
@@ -314,6 +314,59 @@ function generateInterface(ast: TInterface, options: Options): string {
   )
 }
 
+function generateInterfaceTypeCheck(ast: TNamedInterface, options: Options): string {
+  const params: TInterfaceParam[] = ast.params
+    .filter(_ => !_.isPatternProperty && !_.isUnreachableDefinition &&
+      !_.keyName.startsWith("[") && !_.keyName.startsWith("{")
+    );
+  if (params.length==0) {
+    return "";
+  }
+  return (
+    "\n\n" +
+    `export function isInterfaceOf${toSafeString(ast.standaloneName)} (obj: any) : obj is ${toSafeString(ast.standaloneName)}` +
+    `{` +
+    '\n' +
+      "return obj !== undefined && obj !== null\n" +
+    params
+      .map(
+        ({ keyName, ast, isRequired}) =>
+          [keyName, isRequired, ast, generateType(ast, options)] as [string, boolean, AST, string]
+      )
+      .map(
+        ([keyName,isRequired, ast, type]) => {
+          let ret = '\t && '
+          if (!isRequired) {
+            ret += `(obj.${escapeKeyName(keyName)} === undefined || ( `
+          }
+          if (ast.type === "UNION") {
+            // ENUM
+            const unionStrVal = []
+            for (let param of ast.params) {
+              unionStrVal.push(generateRawType(param, options))
+            }
+            const allowedList = unionStrVal.join(", ")
+            ret += `[${allowedList}].includes(obj.${escapeKeyName(keyName)})`
+          } else if (["string", "boolean", "number"].includes(type)) {
+            ret += ` typeof obj.${escapeKeyName(keyName)} === "${type}"`
+          } else if (hasStandaloneName(ast)) {
+            const iname = toSafeString(type)
+            ret += ` "${escapeKeyName(keyName)}" in obj && ( isInterfaceOf${iname} === undefined || isInterfaceOf${iname}(obj.${escapeKeyName(keyName)}) )`
+          } else {
+            ret +=`typeof obj.${escapeKeyName(keyName)} === "object"`
+          }
+          if (!isRequired) {
+            ret += ` ) )`
+          }
+          return ret;
+        }
+      )
+      .join('\n') +
+    '\n' +
+    '}'
+  )
+}
+
 function generateComment(comment: string): string {
   return ['/**', ...comment.split('\n').map(_ => ' * ' + _), ' */'].join('\n')
 }
@@ -338,7 +391,9 @@ function generateStandaloneInterface(ast: TNamedInterface, options: Options): st
     (ast.superTypes.length > 0
       ? `extends ${ast.superTypes.map(superType => toSafeString(superType.standaloneName)).join(', ')} `
       : '') +
-    generateInterface(ast, options)
+    generateInterface(ast, options) +
+     generateInterfaceTypeCheck(ast, options) +
+      "\n"
   )
 }
 

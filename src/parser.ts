@@ -300,8 +300,11 @@ function standaloneName(
   keyNameFromDefinition: string | undefined,
   usedNames: UsedNames
 ): string | undefined {
-  const name = schema.title || schema.$id || keyNameFromDefinition
+  let name : string|undefined = schema.title || schema.$id || keyNameFromDefinition
   if (name) {
+    if (name.startsWith("http")) {
+      name = name.substring(name.lastIndexOf("/")+1)
+    }
     return generateName(name, usedNames)
   }
 }
@@ -350,13 +353,17 @@ function parseSchema(
   usedNames: UsedNames,
   parentSchemaName: string
 ): TInterfaceParam[] {
-  let asts: TInterfaceParam[] = map(schema.properties, (value, key: string) => ({
-    ast: parse(value, options, key, processed, usedNames),
-    isPatternProperty: false,
-    isRequired: includes(schema.required || [], key),
-    isUnreachableDefinition: false,
-    keyName: key
-  }))
+  let asts: TInterfaceParam[] = map(schema.properties, (value, key: string) => {
+    let isRequired = value.required === true || includes(schema.required || [], key);
+    console.log(`Parse-Debug: ${key} is ${isRequired}`)
+    return ({
+      ast: parse(value, options, key, processed, usedNames),
+      isPatternProperty: false,
+      isRequired: isRequired,
+      isUnreachableDefinition: false,
+      keyName: key
+    })
+  })
 
   let singlePatternProperty = false
   if (schema.patternProperties) {
