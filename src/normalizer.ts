@@ -39,6 +39,22 @@ rules.set('Destructure unary types', schema => {
   }
 })
 
+rules.set('Has _id in Root Schemas', (schema, _) => {
+  if (isObjectType(schema)
+  //  && schema[Parent] === null
+    && schema.properties !== undefined && !("_id" in schema.properties)
+  ) {
+    const _id: LinkedJSONSchema = {
+      [Parent]: schema,
+      type: "string",
+      description: "Unique '_id' of this Object",
+      required: false,
+      additionalProperties:false
+    }
+    schema.properties['_id'] = _id;
+  }
+})
+
 rules.set('Add empty `required` property if none is defined', schema => {
   if (isObjectType(schema) && !('required' in schema)) {
     schema.required = false
